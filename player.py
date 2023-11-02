@@ -13,7 +13,8 @@ class Player:
         self.angle = 0
         self.health = 100
         self.max_health = 100
-
+        self.attack_distance = size * 10  # Adjust as needed
+        self.attack_angle = 75  # Adjust as needed, smaller values result in a narrower attack zone
 
     def draw(self, surface):
         # Create a triangle for the player with a "nose" to indicate direction
@@ -48,6 +49,10 @@ class Player:
         if self.health < 0:
             self.health = 0
 
+    def heal(self, amount):
+        self.health += amount
+        if self.health > 100:
+            self.health = 100  # Cap the player's health at 100%
     def is_alive(self):
         return self.health > 0
 
@@ -56,17 +61,44 @@ class Player:
         if self.health > self.max_health:
             self.health = self.max_health
 
+
+    def point_in_triangle(self, pt, v1, v2, v3):
+        # Barycentric technique to check if point is inside the triangle
+        def sign(p1, p2, p3):
+            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+
+        b1 = sign(pt, v1, v2) < 0.0
+        b2 = sign(pt, v2, v3) < 0.0
+        b3 = sign(pt, v3, v1) < 0.0
+
+        return (b1 == b2) and (b2 == b3)
+
     def is_attacking(self, enemy):
-        # Calculate direction of the enemy relative to the player
-        dir_x = enemy.position[0] - self.position[0]
-        dir_y = enemy.position[1] - self.position[1]
-        # Calculate the angle to the enemy
-        angle_to_enemy = math.degrees(math.atan2(dir_y, dir_x)) % 360
-        # Calculate the difference in angle, wrapped between -180 and 180
-        angle_difference = (angle_to_enemy - self.angle + 180) % 360 - 180
-        # If the enemy is within 45 degrees of the player's front and close enough, it's an attack
-        if -45 <= angle_difference <= 45:
-            distance_to_enemy = math.sqrt(dir_x ** 2 + dir_y ** 2)
-            if distance_to_enemy < self.size + enemy.size:
+        # Define the vertices of the triangle (attack zone) in front of the player
+        front_tip = (
+            self.position[0] + math.cos(math.radians(self.angle)) * self.attack_distance,
+            self.position[1] + math.sin(math.radians(self.angle)) * self.attack_distance
+        )
+        left_vertex = (
+            self.position[0] + math.cos(math.radians(self.angle - self.attack_angle)) * self.size,
+            self.position[1] + math.sin(math.radians(self.angle - self.attack_angle)) * self.size
+        )
+        right_vertex = (
+            self.position[0] + math.cos(math.radians(self.angle + self.attack_angle)) * self.size,
+            self.position[1] + math.sin(math.radians(self.angle + self.attack_angle)) * self.size
+        )
+
+        # Calculate the vertices of the enemy's bounding box
+        enemy_corners = [
+            (enemy.position[0] - enemy.size / 2, enemy.position[1] - enemy.size / 2),
+            (enemy.position[0] + enemy.size / 2, enemy.position[1] - enemy.size / 2),
+            (enemy.position[0] + enemy.size / 2, enemy.position[1] + enemy.size / 2),
+            (enemy.position[0] - enemy.size / 2, enemy.position[1] + enemy.size / 2),
+        ]
+
+        # Check if any of the enemy's corners are in the player's attack zone
+        for corner in enemy_corners:
+            if self.point_in_triangle(corner, front_tip, left_vertex, right_vertex):
                 return True
+
         return False

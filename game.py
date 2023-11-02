@@ -53,8 +53,10 @@ class Game:
                 # Check if the player is hitting the enemy with the front "spike"
                 if self.player.is_attacking(enemy):
                     self.enemies.remove(enemy)
+                    self.player.heal(1)  # Heal the player when they defeat an enemy
                 else:
-                    self.player.take_damage(10)
+                    self.player.take_damage(self.player.health * 0.1)  # Player takes 10% health damage
+                    self.enemies.remove(enemy)  # Remove the enemy that collided with the player
         # Update health bar
         self.health_bar.health = self.player.health
 
